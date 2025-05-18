@@ -1,158 +1,177 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
-import seaborn as sns
 
 # ----------------------------
-# Fungsi Naive Bayes (tanpa Laplace smoothing agar sesuai PDF)
-# ----------------------------
-def hitung_probabilitas_fitur(df, fitur, nilai, label_kelas, kolom_target):
-    subset = df[df[kolom_target] == label_kelas]
-    total = len(subset)
-    cocok = len(subset[subset[fitur] == nilai])
-    if total == 0:
-        return 0
-    return cocok / total
+
+# Fungsi Naive Bayes dengan Laplace Smoothing
 
 # ----------------------------
+
+def hitung\_probabilitas\_fitur(df, fitur, nilai, label\_kelas, kolom\_target):
+subset = df\[df\[kolom\_target] == label\_kelas]
+total = len(subset)
+nilai\_unik = df\[fitur].nunique()
+cocok = len(subset\[subset\[fitur] == nilai])
+return (cocok + 1) / (total + nilai\_unik)  # Laplace smoothing
+
+def prediksi\_naive\_bayes(df, input\_data, kolom\_target):
+total = len(df)
+hasil\_kelas = df\[kolom\_target].unique()
+probabilitas = {}
+
+```
+for kelas in hasil_kelas:
+    prior = (len(df[df[kolom_target] == kelas]) + 1) / (total + len(hasil_kelas))  # Laplace smoothing
+    likelihood = 1
+    for fitur, nilai in input_data.items():
+        prob = hitung_probabilitas_fitur(df, fitur, nilai, kelas, kolom_target)
+        likelihood *= prob
+    probabilitas[kelas] = prior * likelihood
+
+prediksi = max(probabilitas, key=probabilitas.get)
+return prediksi, probabilitas
+```
+
+# ----------------------------
+
 # Streamlit UI
+
 # ----------------------------
+
 st.title("🔍 Prediksi Olahraga dengan Naive Bayes")
 
-st.markdown("""
----
+## st.markdown("""
+
 ### 👥 Kelompok 4 - Anggota
-1. Ilham Saleh  
-2. Putra Pamungkas  
-3. Laras Anggi Wijayanti  
-4. Sina Widianti  
-5. Dila  
+
+1. Ilham Saleh
+2. Putra Pamungkas
+3. Laras Anggi Wijayanti
+4. Sina Widianti
+5. Dila
+
 ---
+
 """)
 
-# Data default (sesuai contoh di PDF)
-data_default = pd.DataFrame([
-    {"Cuaca": "Cerah", "Waktu": "Banyak", "Niat": "Ya", "Olahraga": "Ya"},
-    {"Cuaca": "Hujan", "Waktu": "Sedikit", "Niat": "Tidak", "Olahraga": "Tidak"},
-    {"Cuaca": "Cerah", "Waktu": "Sedikit", "Niat": "Ya", "Olahraga": "Ya"},
-    {"Cuaca": "Mendung", "Waktu": "Banyak", "Niat": "Ya", "Olahraga": "Ya"},
-    {"Cuaca": "Hujan", "Waktu": "Banyak", "Niat": "Tidak", "Olahraga": "Tidak"},
-    {"Cuaca": "Cerah", "Waktu": "Banyak", "Niat": "Tidak", "Olahraga": "Ya"},
-    {"Cuaca": "Mendung", "Waktu": "Sedikit", "Niat": "Ya", "Olahraga": "Tidak"},
-    {"Cuaca": "Cerah", "Waktu": "Sedikit", "Niat": "Tidak", "Olahraga": "Tidak"},
+# Data default
+
+data\_default = pd.DataFrame(\[
+{"Cuaca": "Cerah", "Waktu": "Banyak", "Niat": "Ya", "Olahraga": "Ya"},
+{"Cuaca": "Hujan", "Waktu": "Sedikit", "Niat": "Tidak", "Olahraga": "Tidak"},
+{"Cuaca": "Cerah", "Waktu": "Sedikit", "Niat": "Ya", "Olahraga": "Ya"},
+{"Cuaca": "Mendung", "Waktu": "Banyak", "Niat": "Ya", "Olahraga": "Ya"},
+{"Cuaca": "Hujan", "Waktu": "Banyak", "Niat": "Tidak", "Olahraga": "Tidak"},
+{"Cuaca": "Cerah", "Waktu": "Banyak", "Niat": "Tidak", "Olahraga": "Ya"},
+{"Cuaca": "Mendung", "Waktu": "Sedikit", "Niat": "Ya", "Olahraga": "Tidak"},
+{"Cuaca": "Cerah", "Waktu": "Sedikit", "Niat": "Tidak", "Olahraga": "Tidak"},
 ])
 
 st.sidebar.header("⚙️ Pengaturan Data")
 
 # Upload Excel
-uploaded = st.sidebar.file_uploader("📁 Upload Excel (.xlsx) (opsional)", type=["xlsx"])
-expected_columns = ["Cuaca", "Waktu", "Niat", "Olahraga"]
+
+uploaded = st.sidebar.file\_uploader("📁 Upload Excel (.xlsx) (opsional)", type=\["xlsx"])
+expected\_columns = \["Cuaca", "Waktu", "Niat", "Olahraga"]
 
 if uploaded:
-    try:
-        df = pd.read_excel(uploaded)
-        if all(col in df.columns for col in expected_columns):
-            st.success("✅ Data berhasil diunggah dan valid.")
-        else:
-            st.error(f"❌ Struktur kolom tidak sesuai. Kolom yang dibutuhkan: {expected_columns}")
-            df = data_default
-    except Exception as e:
-        st.error(f"Gagal membaca file Excel: {e}")
-        df = data_default
+try:
+df = pd.read\_excel(uploaded)
+if all(col in df.columns for col in expected\_columns):
+st.success("✅ Data berhasil diunggah dan valid.")
 else:
-    df = data_default
-    st.info("📌 Menggunakan data pelatihan bawaan.")
+st.error(f"❌ Struktur kolom tidak sesuai. Kolom yang dibutuhkan: {expected\_columns}")
+df = data\_default
+except Exception as e:
+st.error(f"Gagal membaca file Excel: {e}")
+df = data\_default
+else:
+df = data\_default
+st.info("📌 Menggunakan data pelatihan bawaan.")
 
 # Tampilkan data
+
 with st.expander("🔍 Lihat Data Pelatihan"):
-    st.dataframe(df)
+st.dataframe(df)
 
 # Input prediksi
+
 st.subheader("🧪 Input Prediksi Baru")
 
-cuaca = st.selectbox("Cuaca:", df["Cuaca"].unique())
-waktu = st.selectbox("Waktu Luang:", df["Waktu"].unique())
-niat = st.selectbox("Niat:", df["Niat"].unique())
+cuaca = st.selectbox("Cuaca:", df\["Cuaca"].unique())
+waktu = st.selectbox("Waktu Luang:", df\["Waktu"].unique())
+niat = st.selectbox("Niat:", df\["Niat"].unique())
 
-input_user = {"Cuaca": cuaca, "Waktu": waktu, "Niat": niat}
+input\_user = {"Cuaca": cuaca, "Waktu": waktu, "Niat": niat}
 
 if st.button("🔮 Prediksi"):
-    st.subheader("📋 Langkah Perhitungan Naive Bayes")
+hasil, probabilitas = prediksi\_naive\_bayes(df, input\_user, "Olahraga")
 
-    total_data = len(df)
-    kelas_unik = df["Olahraga"].unique()
-    hasil_tiap_kelas = {}
+```
+st.success(f"🎯 Prediksi: Orang tersebut akan **olahraga? {hasil}**")
 
-    for kelas in kelas_unik:
-        subset_kelas = df[df["Olahraga"] == kelas]
-        prior = len(subset_kelas) / total_data
-        st.markdown(f"**P({kelas}) = {len(subset_kelas)} / {total_data} = {prior:.4f}**")
+st.write("📊 Probabilitas Kelas:")
+st.json(probabilitas)
 
-        likelihood = 1
-        for fitur, nilai in input_user.items():
-            prob_fitur = hitung_probabilitas_fitur(df, fitur, nilai, kelas, "Olahraga")
-            st.markdown(f"- P({fitur}={nilai}|{kelas}) = {prob_fitur:.4f}")
-            likelihood *= prob_fitur
+fig, ax = plt.subplots()
+ax.pie(probabilitas.values(), labels=probabilitas.keys(), autopct='%1.2f%%')
+ax.set_title("Distribusi Probabilitas Prediksi")
+st.pyplot(fig)
 
-        hasil_akhir = prior * likelihood
-        hasil_tiap_kelas[kelas] = hasil_akhir
-        st.markdown(f"➡️ P({kelas}|X) ∝ {prior:.4f} × likelihood = {hasil_akhir:.6f}")
-        st.markdown("---")
+st.markdown("📘 **Penjelasan:**")
+st.markdown(f"- Berdasarkan kombinasi fitur **{input_user}**, sistem memperkirakan probabilitas untuk setiap kelas ('Ya' atau 'Tidak').")
+st.markdown(f"- Karena probabilitas tertinggi adalah untuk kelas '**{hasil}**', maka prediksi akhir mengarah ke **{hasil}**.")
+```
 
-    prediksi_akhir = max(hasil_tiap_kelas, key=hasil_tiap_kelas.get)
+# Evaluasi jika label tersedia
 
-    st.success(f"🎯 Prediksi: Orang tersebut akan **olahraga? {prediksi_akhir}**")
-    st.write("📊 Probabilitas Kelas:")
-    st.json(hasil_tiap_kelas)
+if "Olahraga" in df.columns:
+st.subheader("📈 Evaluasi Model (Akurasi - Leave-One-Out)")
 
-    # Tambahan: Tampilkan rumus lengkap Naive Bayes
-    with st.expander("🧠 Rumus Naive Bayes yang Digunakan"):
-        for kelas in kelas_unik:
-            terms = [f"P({fitur}={input_user[fitur]}|{kelas})" for fitur in input_user]
-            rumus = f"P({kelas}|X) = P({kelas}) \times " + " \times ".join(terms)
-            st.latex(rumus)
+```
+benar = 0
+for idx, row in df.iterrows():
+    input_data = {col: row[col] for col in ["Cuaca", "Waktu", "Niat"]}
+    pred, _ = prediksi_naive_bayes(df.drop(idx), input_data, "Olahraga")
+    if pred == row["Olahraga"]:
+        benar += 1
 
-            prior = len(df[df["Olahraga"] == kelas]) / len(df)
-            terms_substitusi = []
-            likelihood = 1
-            for fitur, nilai in input_user.items():
-                subset_kelas = df[df["Olahraga"] == kelas]
-                cocok = len(subset_kelas[subset_kelas[fitur] == nilai])
-                total = len(subset_kelas)
-                prob = cocok / total if total > 0 else 0
-                terms_substitusi.append(f"({cocok}/{total})")
-                likelihood *= prob
+akurasi = benar / len(df)
+st.write(f"✅ Akurasi: **{akurasi*100:.2f}%** berdasarkan {len(df)} data latih")
+```
 
-            st.markdown(f"**Substitusi:**")
-            st.latex(f"P({kelas}|X) = ({len(df[df['Olahraga'] == kelas])}/{len(df)}) \times " + " \times ".join(terms_substitusi))
-            st.latex(f"P({kelas}|X) = {prior:.4f} \times {likelihood / prior:.4f} = {prior * likelihood:.6f}")
-    for kelas in kelas_unik:
-        terms = [f"P({fitur}={input_user[fitur]}|{kelas})" for fitur in input_user]
-        rumus = f"P({kelas}|X) = P({kelas}) \times " + " \times ".join(terms)
-        st.latex(rumus)
+# ----------------------------
 
-        prior = len(df[df["Olahraga"] == kelas]) / len(df)
-        terms_substitusi = []
-        likelihood = 1
-        for fitur, nilai in input_user.items():
-            subset_kelas = df[df["Olahraga"] == kelas]
-            cocok = len(subset_kelas[subset_kelas[fitur] == nilai])
-            total = len(subset_kelas)
-            prob = cocok / total if total > 0 else 0
-            terms_substitusi.append(f"({cocok}/{total})")
-            likelihood *= prob
+# Tambahan: Confusion Matrix dan Metrics
 
-        st.markdown(f"**Substitusi:**")
-        st.latex(f"P({kelas}|X) = ({len(df[df['Olahraga'] == kelas])}/{len(df)}) \times " + " \times ".join(terms_substitusi))
-        st.latex(f"P({kelas}|X) = {prior:.4f} \times {likelihood / prior:.4f} = {prior * likelihood:.6f}")
+# ----------------------------
 
-    
-    
-    fig, ax = plt.subplots()
-    ax.pie(hasil_tiap_kelas.values(), labels=hasil_tiap_kelas.keys(), autopct='%1.2f%%')
-    ax.set_title("Distribusi Probabilitas Prediksi")
-    st.pyplot(fig)
+from sklearn.metrics import confusion\_matrix, precision\_score, recall\_score, f1\_score
+import seaborn as sns
 
-    st.markdown("📘 **Kesimpulan:**")
-    st.markdown(f"- Karena nilai probabilitas tertinggi terdapat pada kelas '**{prediksi_akhir}**', maka sistem memprediksi hasil akhir sebagai **{prediksi_akhir}**.")
+actual = \[]
+predicted = \[]
+
+for idx, row in df.iterrows():
+input\_data = {col: row\[col] for col in \["Cuaca", "Waktu", "Niat"]}
+pred, \_ = prediksi\_naive\_bayes(df.drop(idx), input\_data, "Olahraga")
+actual.append(row\["Olahraga"])
+predicted.append(pred)
+
+cm = confusion\_matrix(actual, predicted, labels=\["Ya", "Tidak"])
+precision = precision\_score(actual, predicted, pos\_label="Ya")
+recall = recall\_score(actual, predicted, pos\_label="Ya")
+f1 = f1\_score(actual, predicted, pos\_label="Ya")
+
+st.write("📊 **Confusion Matrix**:")
+fig\_cm, ax\_cm = plt.subplots()
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=\["Ya", "Tidak"], yticklabels=\["Ya", "Tidak"], ax=ax\_cm)
+ax\_cm.set\_xlabel("Prediksi")
+ax\_cm.set\_ylabel("Aktual")
+st.pyplot(fig\_cm)
+
+st.write("🔎 **Detail Evaluasi (kelas: 'Ya')**")
+st.markdown(f"- **Precision**: {precision:.2f}")
+st.markdown(f"- **Recall**: {recall:.2f}")
+st.markdown(f"- **F1-score**: {f1:.2f}")
