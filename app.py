@@ -3,16 +3,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # ----------------------------
-# Fungsi Naive Bayes Manual
+# Fungsi Naive Bayes dengan Laplace Smoothing
 # ----------------------------
 
 def hitung_probabilitas_fitur(df, fitur, nilai, label_kelas, kolom_target):
     subset = df[df[kolom_target] == label_kelas]
     total = len(subset)
-    if total == 0:
-        return 0
-    cocok = subset[subset[fitur] == nilai]
-    return len(cocok) / total
+    nilai_unik = df[fitur].nunique()
+    cocok = len(subset[subset[fitur] == nilai])
+    return (cocok + 1) / (total + nilai_unik)  # Laplace smoothing
 
 def prediksi_naive_bayes(df, input_data, kolom_target):
     total = len(df)
@@ -20,7 +19,7 @@ def prediksi_naive_bayes(df, input_data, kolom_target):
     probabilitas = {}
 
     for kelas in hasil_kelas:
-        prior = len(df[df[kolom_target] == kelas]) / total
+        prior = (len(df[df[kolom_target] == kelas]) + 1) / (total + len(hasil_kelas))  # Laplace smoothing
         likelihood = 1
         for fitur, nilai in input_data.items():
             prob = hitung_probabilitas_fitur(df, fitur, nilai, kelas, kolom_target)
@@ -34,7 +33,7 @@ def prediksi_naive_bayes(df, input_data, kolom_target):
 # Streamlit UI
 # ----------------------------
 
-st.title("🔍 Prediksi Olahraga dengan Naive Bayes")
+st.title("🔍 Prediksi Olahraga dengan Naive Bayes (Laplace Smoothing)")
 
 # Data default
 data_default = pd.DataFrame([
@@ -52,16 +51,22 @@ st.sidebar.header("⚙️ Pengaturan Data")
 
 # Upload Excel
 uploaded = st.sidebar.file_uploader("📁 Upload Excel (.xlsx) (opsional)", type=["xlsx"])
+expected_columns = ["Cuaca", "Waktu", "Niat", "Olahraga"]
+
 if uploaded:
     try:
         df = pd.read_excel(uploaded)
-        st.success("Data berhasil diunggah.")
+        if all(col in df.columns for col in expected_columns):
+            st.success("✅ Data berhasil diunggah dan valid.")
+        else:
+            st.error(f"❌ Struktur kolom tidak sesuai. Kolom yang dibutuhkan: {expected_columns}")
+            df = data_default
     except Exception as e:
         st.error(f"Gagal membaca file Excel: {e}")
         df = data_default
 else:
     df = data_default
-    st.info("Menggunakan data pelatihan bawaan.")
+    st.info("📌 Menggunakan data pelatihan bawaan.")
 
 # Tampilkan data
 with st.expander("🔍 Lihat Data Pelatihan"):
@@ -79,28 +84,30 @@ input_user = {"Cuaca": cuaca, "Waktu": waktu, "Niat": niat}
 if st.button("🔮 Prediksi"):
     hasil, probabilitas = prediksi_naive_bayes(df, input_user, "Olahraga")
     
-    st.success(f"Prediksi: Orang tersebut akan **olahraga? {hasil}**")
+    st.success(f"🎯 Prediksi: Orang tersebut akan **olahraga? {hasil}**")
     
-    # Tampilkan probabilitas
     st.write("📊 Probabilitas Kelas:")
     st.json(probabilitas)
     
-    # Pie chart visualisasi
     fig, ax = plt.subplots()
     ax.pie(probabilitas.values(), labels=probabilitas.keys(), autopct='%1.2f%%')
     ax.set_title("Distribusi Probabilitas Prediksi")
     st.pyplot(fig)
 
+    st.markdown("📘 **Penjelasan:**")
+    st.markdown(f"- Berdasarkan kombinasi fitur **{input_user}**, sistem memperkirakan probabilitas untuk setiap kelas ('Ya' atau 'Tidak').")
+    st.markdown(f"- Karena probabilitas tertinggi adalah untuk kelas '**{hasil}**', maka prediksi akhir mengarah ke **{hasil}**.")
+
 # Evaluasi jika label tersedia
 if "Olahraga" in df.columns:
-    st.subheader("📈 Evaluasi Model (Akurasi)")
+    st.subheader("📈 Evaluasi Model (Akurasi - Leave-One-Out)")
 
     benar = 0
     for idx, row in df.iterrows():
         input_data = {col: row[col] for col in ["Cuaca", "Waktu", "Niat"]}
-        pred, _ = prediksi_naive_bayes(df.drop(idx), input_data, "Olahraga")  # Leave-One-Out
+        pred, _ = prediksi_naive_bayes(df.drop(idx), input_data, "Olahraga")
         if pred == row["Olahraga"]:
             benar += 1
 
     akurasi = benar / len(df)
-    st.write(f"✅ Akurasi (Leave-One-Out): **{akurasi*100:.2f}%**")
+    st.write(f"✅ Akurasi: **{akurasi*100:.2f}%** berdasarkan {len(df)} data latih")
