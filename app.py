@@ -35,6 +35,17 @@ def prediksi_naive_bayes(df, input_data, kolom_target):
 
 st.title("🔍 Prediksi Olahraga dengan Naive Bayes")
 
+st.markdown("""
+---
+### 👥 Kelompok 4 - Anggota
+1. Ilham Saleh  
+2. Putra Pamungkas  
+3. Laras Anggi Wijayanti  
+4. Sina Widianti  
+5. Dila  
+---
+""")
+
 # Data default
 data_default = pd.DataFrame([
     {"Cuaca": "Cerah", "Waktu": "Banyak", "Niat": "Ya", "Olahraga": "Ya"},
