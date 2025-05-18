@@ -111,3 +111,37 @@ if "Olahraga" in df.columns:
 
     akurasi = benar / len(df)
     st.write(f"✅ Akurasi: **{akurasi*100:.2f}%** berdasarkan {len(df)} data latih")
+
+# ----------------------------
+# Tambahan: Confusion Matrix dan Metrics
+# ----------------------------
+
+from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
+import seaborn as sns
+
+actual = []
+predicted = []
+
+for idx, row in df.iterrows():
+    input_data = {col: row[col] for col in ["Cuaca", "Waktu", "Niat"]}
+    pred, _ = prediksi_naive_bayes(df.drop(idx), input_data, "Olahraga")
+    actual.append(row["Olahraga"])
+    predicted.append(pred)
+
+cm = confusion_matrix(actual, predicted, labels=["Ya", "Tidak"])
+precision = precision_score(actual, predicted, pos_label="Ya")
+recall = recall_score(actual, predicted, pos_label="Ya")
+f1 = f1_score(actual, predicted, pos_label="Ya")
+
+st.write("📊 **Confusion Matrix**:")
+fig_cm, ax_cm = plt.subplots()
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=["Ya", "Tidak"], yticklabels=["Ya", "Tidak"], ax=ax_cm)
+ax_cm.set_xlabel("Prediksi")
+ax_cm.set_ylabel("Aktual")
+st.pyplot(fig_cm)
+
+st.write("🔎 **Detail Evaluasi (kelas: 'Ya')**")
+st.markdown(f"- **Precision**: {precision:.2f}")
+st.markdown(f"- **Recall**: {recall:.2f}")
+st.markdown(f"- **F1-score**: {f1:.2f}")
+
