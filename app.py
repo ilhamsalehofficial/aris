@@ -106,6 +106,13 @@ if st.button("🔮 Prediksi"):
     st.write("📊 Probabilitas Kelas:")
     st.json(hasil_tiap_kelas)
 
+    # Tambahan: Tampilkan rumus lengkap Naive Bayes
+    st.subheader("🧠 Rumus Naive Bayes yang Digunakan")
+    for kelas in kelas_unik:
+        terms = [f"P({fitur}={input_user[fitur]}|{kelas})" for fitur in input_user]
+        rumus = f"P({kelas}|X) = P({kelas}) \\times " + " \\times ".join(terms)
+        st.latex(rumus)
+
     fig, ax = plt.subplots()
     ax.pie(hasil_tiap_kelas.values(), labels=hasil_tiap_kelas.keys(), autopct='%1.2f%%')
     ax.set_title("Distribusi Probabilitas Prediksi")
