@@ -56,10 +56,10 @@ def naive_bayes_predict_dengan_langkah(df, input_fitur, kolom_target):
 # ----------------------------
 # Antarmuka Streamlit
 # ----------------------------
-st.title("🤸 Prediksi Apakah Akan Berolahraga dengan Naive Bayes")
+st.title("🤸 Selamat datang! Aplikasi ini membantu Anda memprediksi apakah seseorang akan berolahraga")
 
 st.markdown("""
-Selamat datang! Aplikasi ini membantu Anda memprediksi apakah seseorang akan berolahraga berdasarkan 3 hal: cuaca, waktu luang, dan niat.  
+Berdasarkan 3 hal: cuaca, waktu luang, dan niat.  
 Model ini menggunakan metode Naive Bayes yang sangat cocok untuk data kategori dan mudah dimengerti.  
 Silakan masukkan data, lalu tekan tombol Prediksi. Anda juga dapat melihat bagaimana proses perhitungan dilakukan secara detail.
 """)
