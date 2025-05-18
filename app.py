@@ -107,13 +107,12 @@ if st.button("🔮 Prediksi"):
     st.json(hasil_tiap_kelas)
 
     # Tambahan: Tampilkan rumus lengkap Naive Bayes
-    st.subheader("🧠 Rumus Naive Bayes yang Digunakan")
+    with st.expander("🧠 Rumus Naive Bayes yang Digunakan"):
     for kelas in kelas_unik:
         terms = [f"P({fitur}={input_user[fitur]}|{kelas})" for fitur in input_user]
         rumus = f"P({kelas}|X) = P({kelas}) \times " + " \times ".join(terms)
         st.latex(rumus)
 
-        # Tambahkan substitusi nilai nyata ke dalam rumus
         prior = len(df[df["Olahraga"] == kelas]) / len(df)
         terms_substitusi = []
         likelihood = 1
@@ -129,7 +128,8 @@ if st.button("🔮 Prediksi"):
         st.latex(f"P({kelas}|X) = ({len(df[df['Olahraga'] == kelas])}/{len(df)}) \times " + " \times ".join(terms_substitusi))
         st.latex(f"P({kelas}|X) = {prior:.4f} \times {likelihood / prior:.4f} = {prior * likelihood:.6f}")
 
-    fig, ax = plt.subplots()
+    
+    
     ax.pie(hasil_tiap_kelas.values(), labels=hasil_tiap_kelas.keys(), autopct='%1.2f%%')
     ax.set_title("Distribusi Probabilitas Prediksi")
     st.pyplot(fig)
