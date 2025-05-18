@@ -15,23 +15,42 @@ def hitung_probabilitas_fitur(df, fitur, nilai, label_kelas, kolom_target):
         return 0
     return cocok / total
 
-def naive_bayes_predict(df, input_fitur, kolom_target):
+def naive_bayes_predict_dengan_langkah(df, input_fitur, kolom_target):
     total_data = len(df)
     kelas_unik = df[kolom_target].unique()
     hasil_tiap_kelas = {}
+    langkah_perhitungan = []
 
+    langkah_perhitungan.append("### 🔢 Langkah-langkah Perhitungan")
+
+    # Langkah A: Prior
+    langkah_perhitungan.append("#### A. Hitung Probabilitas Kelas (Prior)")
     for kelas in kelas_unik:
-        subset_kelas = df[df[kolom_target] == kelas]
-        prior = len(subset_kelas) / total_data
+        prior = len(df[df[kolom_target] == kelas]) / total_data
+        langkah_perhitungan.append(f"- P({kelas}) = {len(df[df[kolom_target] == kelas])} / {total_data} = {prior:.4f}")
+
+    # Langkah B dan C
+    for kelas in kelas_unik:
+        prior = len(df[df[kolom_target] == kelas]) / total_data
         likelihood = 1
+        langkah_perhitungan.append(f"\n#### B. Hitung Probabilitas Fitur Berdasarkan Kelas '{kelas}'")
         for fitur, nilai in input_fitur.items():
-            prob_fitur = hitung_probabilitas_fitur(df, fitur, nilai, kelas, kolom_target)
-            likelihood *= prob_fitur
-        hasil_akhir = prior * likelihood
-        hasil_tiap_kelas[kelas] = hasil_akhir
+            prob = hitung_probabilitas_fitur(df, fitur, nilai, kelas, kolom_target)
+            langkah_perhitungan.append(f"- P({fitur}={nilai}|{kelas}) = {prob:.4f}")
+            likelihood *= prob
+        posterior = prior * likelihood
+        hasil_tiap_kelas[kelas] = posterior
+        langkah_perhitungan.append(f"\n#### C. Hitung Nilai Akhir untuk Kelas '{kelas}'")
+        langkah_perhitungan.append(f"- P({kelas}|X) ∝ {prior:.4f} × likelihood = {posterior:.6f}")
+        langkah_perhitungan.append("---")
 
     prediksi_akhir = max(hasil_tiap_kelas, key=hasil_tiap_kelas.get)
-    return prediksi_akhir, hasil_tiap_kelas
+
+    # Langkah D: Kesimpulan
+    langkah_perhitungan.append("#### D. Kesimpulan")
+    langkah_perhitungan.append(f"Karena P({prediksi_akhir}|X) memiliki nilai tertinggi, maka prediksinya adalah: **{prediksi_akhir}**")
+
+    return prediksi_akhir, hasil_tiap_kelas, langkah_perhitungan
 
 # ----------------------------
 # Streamlit UI
@@ -92,11 +111,10 @@ niat = st.selectbox("Niat:", df["Niat"].unique())
 input_user = {"Cuaca": cuaca, "Waktu": waktu, "Niat": niat}
 
 if st.button("🔮 Prediksi"):
-    prediksi_akhir, hasil_tiap_kelas = naive_bayes_predict(df, input_user, "Olahraga")
+    prediksi_akhir, hasil_tiap_kelas, langkah_perhitungan = naive_bayes_predict_dengan_langkah(df, input_user, "Olahraga")
 
-    st.success(f"🎯 Prediksi: Orang tersebut akan **olahraga? {prediksi_akhir}**")
-    st.write("📊 Probabilitas Kelas:")
-    st.json(hasil_tiap_kelas)
+    for langkah in langkah_perhitungan:
+        st.markdown(langkah)
 
     fig, ax = plt.subplots()
     ax.bar(hasil_tiap_kelas.keys(), hasil_tiap_kelas.values(), color=['skyblue', 'salmon'])
@@ -104,22 +122,18 @@ if st.button("🔮 Prediksi"):
     ax.set_title("Distribusi Probabilitas Prediksi")
     st.pyplot(fig)
 
-    st.markdown("📘 **Kesimpulan:**")
-    st.markdown(f"- Karena nilai probabilitas tertinggi terdapat pada kelas '**{prediksi_akhir}**', maka sistem memprediksi hasil akhir sebagai **{prediksi_akhir}**.")
-
 # Evaluasi jika data berlabel tersedia
 def evaluasi_model(df):
     if len(df) < 2:
         return
     fitur = ["Cuaca", "Waktu", "Niat"]
-    X = df[fitur]
     y_true = df["Olahraga"]
     y_pred = []
-    for _, row in X.iterrows():
-        pred, _ = naive_bayes_predict(df, row.to_dict(), "Olahraga")
+    for _, row in df[fitur].iterrows():
+        pred, _, _ = naive_bayes_predict_dengan_langkah(df, row.to_dict(), "Olahraga")
         y_pred.append(pred)
 
-    st.subheader("📏 Evaluasi Model (self-test)")
+    st.subheader("📏 Evaluasi Model (Self-Test)")
     cm = confusion_matrix(y_true, y_pred, labels=y_true.unique())
     fig, ax = plt.subplots()
     sns.heatmap(cm, annot=True, fmt='d', cmap="Blues", xticklabels=y_true.unique(), yticklabels=y_true.unique())
