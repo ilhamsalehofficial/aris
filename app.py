@@ -1,95 +1,105 @@
+# filename: naive_bayes_streamlit_lengkap.py
+
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from statsmodels.tsa.arima.model import ARIMA
-from sklearn.linear_model import LinearRegression
-import numpy as np
 
-st.set_page_config(page_title="Prediksi Penjualan Retail", layout="wide")  # Lebar penuh layar HP
+# ----------------------------
+# Fungsi Naive Bayes Manual
+# ----------------------------
 
-# ===================== Judul Aplikasi =====================
-st.title("📊 Prediksi Penjualan Retail")
-st.markdown("Unggah data penjualan Anda dan pilih metode prediksi untuk melihat estimasi penjualan beberapa bulan ke depan.")
+def hitung_probabilitas_fitur(df, fitur, nilai, label_kelas, kolom_target):
+    subset = df[df[kolom_target] == label_kelas]
+    total = len(subset)
+    if total == 0:
+        return 0
+    cocok = subset[subset[fitur] == nilai]
+    return len(cocok) / total
 
-# ===================== Upload & Load Data =====================
-uploaded_file = st.file_uploader("📁 Unggah file CSV (harus ada kolom 'Tanggal' dan 'Penjualan')", type=["csv"])
+def prediksi_naive_bayes(df, input_data, kolom_target):
+    total = len(df)
+    hasil_kelas = df[kolom_target].unique()
+    probabilitas = {}
 
-if uploaded_file:
-    df = pd.read_csv(uploaded_file, parse_dates=['Tanggal'])
-    df.set_index('Tanggal', inplace=True)
-    st.success("✅ Data berhasil dimuat!")
+    for kelas in hasil_kelas:
+        prior = len(df[df[kolom_target] == kelas]) / total
+        likelihood = 1
+        for fitur, nilai in input_data.items():
+            prob = hitung_probabilitas_fitur(df, fitur, nilai, kelas, kolom_target)
+            likelihood *= prob
+        probabilitas[kelas] = prior * likelihood
 
-    st.subheader("📋 Tabel Data Penjualan")
-    st.dataframe(df, use_container_width=True)
+    prediksi = max(probabilitas, key=probabilitas.get)
+    return prediksi, probabilitas
 
-    # ===================== Pilih Model =====================
-    st.subheader("🔍 Pilih Metode Prediksi")
-    model_type = st.selectbox(
-        "Pilih salah satu metode prediksi:",
-        ["ARIMA", "Moving Average", "Linear Regression"],
-        help="""
-        ARIMA: Akurat untuk data berpola waktu.
-        Moving Average: Rata-rata dari data sebelumnya.
-        Linear Regression: Prediksi berdasarkan tren garis lurus.
-        """
-    )
+# ----------------------------
+# Streamlit UI
+# ----------------------------
 
-    steps = st.number_input("🕒 Berapa bulan ke depan ingin diprediksi?", min_value=1, max_value=12, value=3)
+st.title("🔍 Prediksi Olahraga dengan Naive Bayes")
 
-    # ===================== Prediksi =====================
-    if st.button("🔮 Jalankan Prediksi"):
-        st.info(f"Model: **{model_type}** | Bulan diprediksi: **{steps} bulan**")
+# Data default
+data_default = pd.DataFrame([
+    {"Cuaca": "Cerah", "Waktu": "Banyak", "Niat": "Ya", "Olahraga": "Ya"},
+    {"Cuaca": "Hujan", "Waktu": "Sedikit", "Niat": "Tidak", "Olahraga": "Tidak"},
+    {"Cuaca": "Cerah", "Waktu": "Sedikit", "Niat": "Ya", "Olahraga": "Ya"},
+    {"Cuaca": "Mendung", "Waktu": "Banyak", "Niat": "Ya", "Olahraga": "Ya"},
+    {"Cuaca": "Hujan", "Waktu": "Banyak", "Niat": "Tidak", "Olahraga": "Tidak"},
+    {"Cuaca": "Cerah", "Waktu": "Banyak", "Niat": "Tidak", "Olahraga": "Ya"},
+    {"Cuaca": "Mendung", "Waktu": "Sedikit", "Niat": "Ya", "Olahraga": "Tidak"},
+    {"Cuaca": "Cerah", "Waktu": "Sedikit", "Niat": "Tidak", "Olahraga": "Tidak"},
+])
 
-        if model_type == "ARIMA":
-            model = ARIMA(df['Penjualan'], order=(1, 1, 1))
-            model_fit = model.fit()
-            forecast = model_fit.forecast(steps=steps)
-            forecast.index = pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=steps, freq='MS')
+st.sidebar.header("⚙️ Pengaturan Data")
 
-        elif model_type == "Moving Average":
-            rolling = df['Penjualan'].rolling(window=3).mean()
-            last_avg = rolling.dropna().iloc[-1]
-            forecast = pd.Series(
-                [last_avg] * steps,
-                index=pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=steps, freq='MS')
-            )
+# Upload CSV
+uploaded = st.sidebar.file_uploader("📁 Upload CSV (opsional)", type=["csv"])
+if uploaded:
+    df = pd.read_csv(uploaded)
+    st.success("Data berhasil diunggah.")
+else:
+    df = data_default
+    st.info("Menggunakan data pelatihan bawaan.")
 
-        elif model_type == "Linear Regression":
-            df['Bulan'] = np.arange(len(df))
-            X = df[['Bulan']]
-            y = df['Penjualan']
-            model = LinearRegression().fit(X, y)
-            future_months = np.arange(len(df), len(df) + steps).reshape(-1, 1)
-            y_pred = model.predict(future_months)
-            forecast = pd.Series(
-                y_pred,
-                index=pd.date_range(start=df.index[-1] + pd.DateOffset(months=1), periods=steps, freq='MS')
-            )
+# Tampilkan data
+with st.expander("🔍 Lihat Data Pelatihan"):
+    st.dataframe(df)
 
-        # ===================== Grafik =====================
-        st.subheader("📈 Grafik Prediksi")
-        fig, ax = plt.subplots(figsize=(10, 4))
-        df['Penjualan'].plot(ax=ax, label="Data Aktual")
-        forecast.plot(ax=ax, label="Hasil Prediksi", color='red')
-        ax.set_xlabel("Tanggal")
-        ax.set_ylabel("Penjualan")
-        plt.title("Prediksi Penjualan")
-        plt.legend()
-        st.pyplot(fig, use_container_width=True)
+# Input prediksi
+st.subheader("🧪 Input Prediksi Baru")
 
-        # ===================== Tabel Prediksi =====================
-        st.subheader("🗂️ Tabel Hasil Prediksi")
-        forecast_df = pd.DataFrame({
-            'Tanggal': forecast.index.strftime('%Y-%m'),
-            'Hasil Prediksi Penjualan': forecast.values.astype(int)
-        })
-        st.dataframe(forecast_df, use_container_width=True)
+cuaca = st.selectbox("Cuaca:", df["Cuaca"].unique())
+waktu = st.selectbox("Waktu Luang:", df["Waktu"].unique())
+niat = st.selectbox("Niat:", df["Niat"].unique())
 
-        # ===================== Tombol Unduh =====================
-        csv = forecast_df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="⬇️ Download Hasil Prediksi (CSV)",
-            data=csv,
-            file_name='hasil_prediksi.csv',
-            mime='text/csv'
-        )
+input_user = {"Cuaca": cuaca, "Waktu": waktu, "Niat": niat}
+
+if st.button("🔮 Prediksi"):
+    hasil, probabilitas = prediksi_naive_bayes(df, input_user, "Olahraga")
+    
+    st.success(f"Prediksi: Orang tersebut akan **olahraga? {hasil}**")
+    
+    # Tampilkan probabilitas
+    st.write("📊 Probabilitas Kelas:")
+    st.json(probabilitas)
+    
+    # Pie chart visualisasi
+    fig, ax = plt.subplots()
+    ax.pie(probabilitas.values(), labels=probabilitas.keys(), autopct='%1.2f%%')
+    ax.set_title("Distribusi Probabilitas Prediksi")
+    st.pyplot(fig)
+
+# Evaluasi jika label tersedia
+if "Olahraga" in df.columns:
+    st.subheader("📈 Evaluasi Model (Akurasi)")
+
+    benar = 0
+    for idx, row in df.iterrows():
+        input_data = {col: row[col] for col in ["Cuaca", "Waktu", "Niat"]}
+        pred, _ = prediksi_naive_bayes(df.drop(idx), input_data, "Olahraga")  # Leave-One-Out
+        if pred == row["Olahraga"]:
+            benar += 1
+
+    akurasi = benar / len(df)
+    st.write(f"✅ Akurasi (Leave-One-Out): **{akurasi*100:.2f}%**")
+
