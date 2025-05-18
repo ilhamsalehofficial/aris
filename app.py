@@ -33,7 +33,7 @@ def prediksi_naive_bayes(df, input_data, kolom_target):
 # Streamlit UI
 # ----------------------------
 
-st.title("🔍 Prediksi Olahraga dengan Naive Bayes (Laplace Smoothing)")
+st.title("🔍 Prediksi Olahraga dengan Naive Bayes")
 
 # Data default
 data_default = pd.DataFrame([
