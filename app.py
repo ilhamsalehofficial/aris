@@ -5,14 +5,15 @@ from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_
 import seaborn as sns
 
 # ----------------------------
-# Fungsi Naive Bayes dengan Laplace Smoothing
+# Fungsi Naive Bayes (tanpa Laplace smoothing agar sesuai PDF)
 # ----------------------------
 def hitung_probabilitas_fitur(df, fitur, nilai, label_kelas, kolom_target):
     subset = df[df[kolom_target] == label_kelas]
     total = len(subset)
-    nilai_unik = df[fitur].nunique()
     cocok = len(subset[subset[fitur] == nilai])
-    return (cocok + 1) / (total + nilai_unik)  # Laplace smoothing
+    if total == 0:
+        return 0
+    return cocok / total
 
 # ----------------------------
 # Streamlit UI
@@ -30,7 +31,7 @@ st.markdown("""
 ---
 """)
 
-# Data default
+# Data default (sesuai contoh di PDF)
 data_default = pd.DataFrame([
     {"Cuaca": "Cerah", "Waktu": "Banyak", "Niat": "Ya", "Olahraga": "Ya"},
     {"Cuaca": "Hujan", "Waktu": "Sedikit", "Niat": "Tidak", "Olahraga": "Tidak"},
@@ -81,20 +82,17 @@ if st.button("🔮 Prediksi"):
 
     total_data = len(df)
     kelas_unik = df["Olahraga"].unique()
-    probabilitas = {}
     hasil_tiap_kelas = {}
 
     for kelas in kelas_unik:
         subset_kelas = df[df["Olahraga"] == kelas]
-        prior = (len(subset_kelas) + 1) / (total_data + len(kelas_unik))
-        st.markdown(f"**P({kelas}) = ({len(subset_kelas)} + 1) / ({total_data} + {len(kelas_unik)}) = {prior:.4f}**")
+        prior = len(subset_kelas) / total_data
+        st.markdown(f"**P({kelas}) = {len(subset_kelas)} / {total_data} = {prior:.4f}**")
 
         likelihood = 1
         for fitur, nilai in input_user.items():
-            nilai_unik = df[fitur].nunique()
-            cocok = len(subset_kelas[subset_kelas[fitur] == nilai])
-            prob_fitur = (cocok + 1) / (len(subset_kelas) + nilai_unik)
-            st.markdown(f"- P({fitur}={nilai}|{kelas}) = ({cocok} + 1) / ({len(subset_kelas)} + {nilai_unik}) = {prob_fitur:.4f}")
+            prob_fitur = hitung_probabilitas_fitur(df, fitur, nilai, kelas, "Olahraga")
+            st.markdown(f"- P({fitur}={nilai}|{kelas}) = {prob_fitur:.4f}")
             likelihood *= prob_fitur
 
         hasil_akhir = prior * likelihood
@@ -115,53 +113,3 @@ if st.button("🔮 Prediksi"):
 
     st.markdown("📘 **Kesimpulan:**")
     st.markdown(f"- Karena nilai probabilitas tertinggi terdapat pada kelas '**{prediksi_akhir}**', maka sistem memprediksi hasil akhir sebagai **{prediksi_akhir}**.")
-
-# Evaluasi Model
-if "Olahraga" in df.columns:
-    st.subheader("📈 Evaluasi Model (Akurasi - Leave-One-Out)")
-    benar, actual, predicted = 0, [], []
-
-    for idx, row in df.iterrows():
-        input_data = {col: row[col] for col in ["Cuaca", "Waktu", "Niat"]}
-        target = row["Olahraga"]
-        subset_df = df.drop(index=idx)
-
-        kelas_unik = subset_df["Olahraga"].unique()
-        hasil_tiap_kelas = {}
-
-        for kelas in kelas_unik:
-            subset_kelas = subset_df[subset_df["Olahraga"] == kelas]
-            prior = (len(subset_kelas) + 1) / (len(subset_df) + len(kelas_unik))
-            likelihood = 1
-            for fitur, nilai in input_data.items():
-                nilai_unik = subset_df[fitur].nunique()
-                cocok = len(subset_kelas[subset_kelas[fitur] == nilai])
-                prob_fitur = (cocok + 1) / (len(subset_kelas) + nilai_unik)
-                likelihood *= prob_fitur
-            hasil_tiap_kelas[kelas] = prior * likelihood
-
-        pred = max(hasil_tiap_kelas, key=hasil_tiap_kelas.get)
-        predicted.append(pred)
-        actual.append(target)
-        if pred == target:
-            benar += 1
-
-    akurasi = benar / len(df)
-    st.write(f"✅ Akurasi: **{akurasi*100:.2f}%** berdasarkan {len(df)} data latih")
-
-    cm = confusion_matrix(actual, predicted, labels=["Ya", "Tidak"])
-    precision = precision_score(actual, predicted, pos_label="Ya")
-    recall = recall_score(actual, predicted, pos_label="Ya")
-    f1 = f1_score(actual, predicted, pos_label="Ya")
-
-    st.write("📊 **Confusion Matrix**:")
-    fig_cm, ax_cm = plt.subplots()
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=["Ya", "Tidak"], yticklabels=["Ya", "Tidak"], ax=ax_cm)
-    ax_cm.set_xlabel("Prediksi")
-    ax_cm.set_ylabel("Aktual")
-    st.pyplot(fig_cm)
-
-    st.write("🔎 **Detail Evaluasi (kelas: 'Ya')**")
-    st.markdown(f"- **Precision**: {precision:.2f}")
-    st.markdown(f"- **Recall**: {recall:.2f}")
-    st.markdown(f"- **F1-score**: {f1:.2f}")
