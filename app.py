@@ -1,5 +1,3 @@
-# filename: naive_bayes_streamlit_lengkap.py
-
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -52,11 +50,15 @@ data_default = pd.DataFrame([
 
 st.sidebar.header("⚙️ Pengaturan Data")
 
-# Upload CSV
-uploaded = st.sidebar.file_uploader("📁 Upload CSV (opsional)", type=["csv"])
+# Upload Excel
+uploaded = st.sidebar.file_uploader("📁 Upload Excel (.xlsx) (opsional)", type=["xlsx"])
 if uploaded:
-    df = pd.read_csv(uploaded)
-    st.success("Data berhasil diunggah.")
+    try:
+        df = pd.read_excel(uploaded)
+        st.success("Data berhasil diunggah.")
+    except Exception as e:
+        st.error(f"Gagal membaca file Excel: {e}")
+        df = data_default
 else:
     df = data_default
     st.info("Menggunakan data pelatihan bawaan.")
@@ -102,4 +104,3 @@ if "Olahraga" in df.columns:
 
     akurasi = benar / len(df)
     st.write(f"✅ Akurasi (Leave-One-Out): **{akurasi*100:.2f}%**")
-
