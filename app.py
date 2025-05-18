@@ -1,11 +1,11 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
 import seaborn as sns
 
 # ----------------------------
-# Fungsi Naive Bayes Manual (Tanpa Laplace Smoothing)
+# Fungsi Naive Bayes (tanpa Laplace smoothing agar sesuai PDF)
 # ----------------------------
 def hitung_probabilitas_fitur(df, fitur, nilai, label_kelas, kolom_target):
     subset = df[df[kolom_target] == label_kelas]
@@ -15,60 +15,23 @@ def hitung_probabilitas_fitur(df, fitur, nilai, label_kelas, kolom_target):
         return 0
     return cocok / total
 
-def naive_bayes_predict_dengan_langkah(df, input_fitur, kolom_target):
-    total_data = len(df)
-    kelas_unik = df[kolom_target].unique()
-    hasil_tiap_kelas = {}
-    langkah_perhitungan = []
-
-    langkah_perhitungan.append("### 🔢 Langkah-langkah Perhitungan Naive Bayes")
-    langkah_perhitungan.append("Aplikasi ini akan menghitung probabilitas apakah seseorang akan berolahraga berdasarkan tiga hal: cuaca, waktu luang, dan niat. Kami menggunakan metode Naive Bayes, yaitu menghitung peluang setiap kemungkinan lalu membandingkannya.")
-
-    # Langkah A: Prior
-    langkah_perhitungan.append("#### A. Hitung Probabilitas Tiap Kelas")
-    for kelas in kelas_unik:
-        prior = len(df[df[kolom_target] == kelas]) / total_data
-        langkah_perhitungan.append(f"- P({kelas}) = Jumlah data dengan '{kelas}' / Total data = {len(df[df[kolom_target] == kelas])} / {total_data} = {prior:.4f}")
-
-    # Langkah B dan C
-    for kelas in kelas_unik:
-        prior = len(df[df[kolom_target] == kelas]) / total_data
-        likelihood = 1
-        langkah_perhitungan.append(f"\n#### B. Hitung Probabilitas Tiap Fitur Jika '{kelas}'")
-        for fitur, nilai in input_fitur.items():
-            prob = hitung_probabilitas_fitur(df, fitur, nilai, kelas, kolom_target)
-            langkah_perhitungan.append(f"- P({fitur} = {nilai} | {kelas}) = {prob:.4f}")
-            likelihood *= prob
-        posterior = prior * likelihood
-        hasil_tiap_kelas[kelas] = posterior
-        langkah_perhitungan.append(f"\n#### C. Hitung Nilai Akhir untuk '{kelas}'")
-        langkah_perhitungan.append(f"- P({kelas}|X) ∝ P({kelas}) × semua fitur = {prior:.4f} × {likelihood:.4f} = {posterior:.6f}")
-        langkah_perhitungan.append("---")
-
-    prediksi_akhir = max(hasil_tiap_kelas, key=hasil_tiap_kelas.get)
-
-    # Langkah D: Kesimpulan
-    langkah_perhitungan.append("#### D. Kesimpulan")
-    langkah_perhitungan.append(f"Karena nilai terbesar adalah untuk '{prediksi_akhir}', maka sistem memprediksi bahwa orang tersebut akan **{prediksi_akhir} olahraga**.")
-
-    return prediksi_akhir, hasil_tiap_kelas, langkah_perhitungan
-
 # ----------------------------
-# Antarmuka Streamlit
+# Streamlit UI
 # ----------------------------
-st.title("🤸 Selamat datang! Aplikasi ini membantu Anda memprediksi apakah seseorang akan berolahraga")
+st.title("🔍 Prediksi Olahraga dengan Naive Bayes")
 
 st.markdown("""
-Berdasarkan 3 hal: cuaca, waktu luang, dan niat.  
-Model ini menggunakan metode Naive Bayes yang sangat cocok untuk data kategori dan mudah dimengerti.  
-Silakan masukkan data, lalu tekan tombol Prediksi. Anda juga dapat melihat bagaimana proses perhitungan dilakukan secara detail.
+---
+### 👥 Kelompok 4 - Anggota
+1. Ilham Saleh  
+2. Putra Pamungkas  
+3. Laras Anggi Wijayanti  
+4. Sina Widianti  
+5. Dila  
+---
 """)
 
-st.sidebar.header("📂 Upload Data Anda (Opsional)")
-uploaded = st.sidebar.file_uploader("Unggah file Excel (.xlsx) yang berisi data Anda", type=["xlsx"])
-expected_columns = ["Cuaca", "Waktu", "Niat", "Olahraga"]
-
-# Data default jika tidak ada upload
+# Data default (sesuai contoh di PDF)
 data_default = pd.DataFrame([
     {"Cuaca": "Cerah", "Waktu": "Banyak", "Niat": "Ya", "Olahraga": "Ya"},
     {"Cuaca": "Hujan", "Waktu": "Sedikit", "Niat": "Tidak", "Olahraga": "Tidak"},
@@ -80,79 +43,74 @@ data_default = pd.DataFrame([
     {"Cuaca": "Cerah", "Waktu": "Sedikit", "Niat": "Tidak", "Olahraga": "Tidak"},
 ])
 
+st.sidebar.header("⚙️ Pengaturan Data")
+
+# Upload Excel
+uploaded = st.sidebar.file_uploader("📁 Upload Excel (.xlsx) (opsional)", type=["xlsx"])
+expected_columns = ["Cuaca", "Waktu", "Niat", "Olahraga"]
+
 if uploaded:
     try:
         df = pd.read_excel(uploaded)
         if all(col in df.columns for col in expected_columns):
-            st.success("✅ Data berhasil diunggah!")
+            st.success("✅ Data berhasil diunggah dan valid.")
         else:
-            st.error("❌ Format kolom tidak sesuai. Harus ada: Cuaca, Waktu, Niat, Olahraga.")
+            st.error(f"❌ Struktur kolom tidak sesuai. Kolom yang dibutuhkan: {expected_columns}")
             df = data_default
-    except:
-        st.error("❌ Gagal membaca file. Pastikan itu file Excel (.xlsx).")
+    except Exception as e:
+        st.error(f"Gagal membaca file Excel: {e}")
         df = data_default
 else:
     df = data_default
-    st.info("📌 Menggunakan data bawaan dari aplikasi.")
+    st.info("📌 Menggunakan data pelatihan bawaan.")
 
+# Tampilkan data
 with st.expander("🔍 Lihat Data Pelatihan"):
     st.dataframe(df)
 
-st.subheader("✏️ Masukkan Kondisi Anda")
-cuaca = st.selectbox("1. Bagaimana cuacanya?", df["Cuaca"].unique())
-waktu = st.selectbox("2. Apakah Anda punya waktu luang?", df["Waktu"].unique())
-niat = st.selectbox("3. Apakah Anda berniat olahraga?", df["Niat"].unique())
+# Input prediksi
+st.subheader("🧪 Input Prediksi Baru")
+
+cuaca = st.selectbox("Cuaca:", df["Cuaca"].unique())
+waktu = st.selectbox("Waktu Luang:", df["Waktu"].unique())
+niat = st.selectbox("Niat:", df["Niat"].unique())
 
 input_user = {"Cuaca": cuaca, "Waktu": waktu, "Niat": niat}
 
-if st.button("🔮 Lakukan Prediksi"):
-    prediksi_akhir, hasil_tiap_kelas, langkah_perhitungan = naive_bayes_predict_dengan_langkah(df, input_user, "Olahraga")
+if st.button("🔮 Prediksi"):
+    st.subheader("📋 Langkah Perhitungan Naive Bayes")
 
-    for langkah in langkah_perhitungan:
-        st.markdown(langkah)
+    total_data = len(df)
+    kelas_unik = df["Olahraga"].unique()
+    hasil_tiap_kelas = {}
 
+    for kelas in kelas_unik:
+        subset_kelas = df[df["Olahraga"] == kelas]
+        prior = len(subset_kelas) / total_data
+        st.markdown(f"**P({kelas}) = {len(subset_kelas)} / {total_data} = {prior:.4f}**")
+
+        likelihood = 1
+        for fitur, nilai in input_user.items():
+            prob_fitur = hitung_probabilitas_fitur(df, fitur, nilai, kelas, "Olahraga")
+            st.markdown(f"- P({fitur}={nilai}|{kelas}) = {prob_fitur:.4f}")
+            likelihood *= prob_fitur
+
+        hasil_akhir = prior * likelihood
+        hasil_tiap_kelas[kelas] = hasil_akhir
+        st.markdown(f"➡️ P({kelas}|X) ∝ {prior:.4f} × likelihood = {hasil_akhir:.6f}")
+        st.markdown("---")
+
+    prediksi_akhir = max(hasil_tiap_kelas, key=hasil_tiap_kelas.get)
+
+    st.success(f"🎯 Prediksi: Orang tersebut akan **olahraga? {prediksi_akhir}**")
+    st.write("📊 Probabilitas Kelas:")
+    st.json(hasil_tiap_kelas)
+
+    
     fig, ax = plt.subplots()
-    ax.bar(hasil_tiap_kelas.keys(), hasil_tiap_kelas.values(), color=['green', 'red'])
-    ax.set_ylabel("Nilai Akhir (Semakin tinggi, semakin mungkin)")
-    ax.set_title("Perbandingan Hasil Tiap Kelas")
+    ax.pie(hasil_tiap_kelas.values(), labels=hasil_tiap_kelas.keys(), autopct='%1.2f%%')
+    ax.set_title("Distribusi Probabilitas Prediksi")
     st.pyplot(fig)
 
-# ----------------------------
-# Evaluasi Model (Jika Diinginkan)
-# ----------------------------
-def evaluasi_model(df):
-    if len(df) < 2:
-        return
-    fitur = ["Cuaca", "Waktu", "Niat"]
-    y_true = df["Olahraga"]
-    y_pred = []
-    for _, row in df[fitur].iterrows():
-        pred, _, _ = naive_bayes_predict_dengan_langkah(df, row.to_dict(), "Olahraga")
-        y_pred.append(pred)
-
-    st.subheader("📏 Evaluasi Model (Uji Coba ke Dirinya Sendiri)")
-    cm = confusion_matrix(y_true, y_pred, labels=y_true.unique())
-    fig, ax = plt.subplots()
-    sns.heatmap(cm, annot=True, fmt='d', cmap="Oranges", xticklabels=y_true.unique(), yticklabels=y_true.unique())
-    ax.set_xlabel("Prediksi")
-    ax.set_ylabel("Sebenarnya")
-    ax.set_title("Confusion Matrix")
-    st.pyplot(fig)
-
-    st.text("Laporan Evaluasi:")
-    st.text(classification_report(y_true, y_pred))
-
-with st.expander("📚 Coba Evaluasi Akurasi Model (Opsional)"):
-    evaluasi_model(df)
-
-st.markdown("""
----
-🧠 **Tentang Naive Bayes:**  
-Metode ini menghitung kemungkinan berdasarkan data yang ada. Misalnya, jika cuaca cerah dan Anda punya waktu serta niat, seberapa besar kemungkinan Anda akan berolahraga?  
-Naive Bayes bekerja berdasarkan "pengalaman masa lalu" yang tersimpan di data, lalu menghitung peluangnya.
-
-📘 Rumus singkat:  
-P(H|X) ∝ P(H) × P(Fitur 1|H) × P(Fitur 2|H) × ...
-
-📌 Cocok untuk pemula dan sangat efisien pada data kategori seperti ini.
-""")
+    st.markdown("📘 **Kesimpulan:**")
+    st.markdown(f"- Karena nilai probabilitas tertinggi terdapat pada kelas '**{prediksi_akhir}**', maka sistem memprediksi hasil akhir sebagai **{prediksi_akhir}**.")
