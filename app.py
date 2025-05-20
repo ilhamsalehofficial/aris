@@ -1,116 +1,44 @@
-import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
-import seaborn as sns
+# Data Training
+data = [
+    {'cuaca': 'cerah', 'waktu': 'banyak', 'niat': 'ya', 'olahraga': 'ya'},
+    {'cuaca': 'hujan', 'waktu': 'sedikit', 'niat': 'tidak', 'olahraga': 'tidak'},
+    {'cuaca': 'cerah', 'waktu': 'sedikit', 'niat': 'ya', 'olahraga': 'ya'},
+    {'cuaca': 'mendung', 'waktu': 'banyak', 'niat': 'ya', 'olahraga': 'ya'},
+    {'cuaca': 'hujan', 'waktu': 'banyak', 'niat': 'tidak', 'olahraga': 'tidak'},
+    {'cuaca': 'cerah', 'waktu': 'banyak', 'niat': 'tidak', 'olahraga': 'ya'},
+    {'cuaca': 'mendung', 'waktu': 'sedikit', 'niat': 'ya', 'olahraga': 'tidak'},
+    {'cuaca': 'cerah', 'waktu': 'sedikit', 'niat': 'tidak', 'olahraga': 'tidak'}
+]
 
-# ----------------------------
-# Fungsi Naive Bayes (tanpa Laplace smoothing agar sesuai PDF)
-# ----------------------------
-def hitung_probabilitas_fitur(df, fitur, nilai, label_kelas, kolom_target):
-    subset = df[df[kolom_target] == label_kelas]
-    total = len(subset)
-    cocok = len(subset[subset[fitur] == nilai])
-    if total == 0:
-        return 0
-    return cocok / total
+# Fungsi menghitung probabilitas
+def naive_bayes_predict(cuaca, waktu, niat):
+    total = len(data)
+    kelas = ['ya', 'tidak']
+    hasil = {}
 
-# ----------------------------
-# Streamlit UI
-# ----------------------------
-st.title("🔍 Prediksi Olahraga dengan Naive Bayes")
+    for k in kelas:
+        # Data yang sesuai dengan kelas k
+        data_k = [d for d in data if d['olahraga'] == k]
+        total_k = len(data_k)
 
-st.markdown("""
----
-### 👥 Kelompok 4 - Anggota
-1. Ilham Saleh  
-2. Putra Pamungkas  
-3. Laras Anggi Wijayanti  
-4. Sina Widianti  
-5. Dila  
----
-""")
+        # Hitung prior probability
+        p_k = total_k / total
 
-# Data default (sesuai contoh di PDF)
-data_default = pd.DataFrame([
-    {"Cuaca": "Cerah", "Waktu": "Banyak", "Niat": "Ya", "Olahraga": "Ya"},
-    {"Cuaca": "Hujan", "Waktu": "Sedikit", "Niat": "Tidak", "Olahraga": "Tidak"},
-    {"Cuaca": "Cerah", "Waktu": "Sedikit", "Niat": "Ya", "Olahraga": "Ya"},
-    {"Cuaca": "Mendung", "Waktu": "Banyak", "Niat": "Ya", "Olahraga": "Ya"},
-    {"Cuaca": "Hujan", "Waktu": "Banyak", "Niat": "Tidak", "Olahraga": "Tidak"},
-    {"Cuaca": "Cerah", "Waktu": "Banyak", "Niat": "Tidak", "Olahraga": "Ya"},
-    {"Cuaca": "Mendung", "Waktu": "Sedikit", "Niat": "Ya", "Olahraga": "Tidak"},
-    {"Cuaca": "Cerah", "Waktu": "Sedikit", "Niat": "Tidak", "Olahraga": "Tidak"},
-])
+        # Hitung likelihood
+        p_cuaca = len([d for d in data_k if d['cuaca'] == cuaca]) / total_k
+        p_waktu = len([d for d in data_k if d['waktu'] == waktu]) / total_k
+        p_niat = len([d for d in data_k if d['niat'] == niat]) / total_k
 
-st.sidebar.header("⚙️ Pengaturan Data")
+        # Hitung posterior (tanpa P(X))
+        hasil[k] = p_k * p_cuaca * p_waktu * p_niat
 
-# Upload Excel
-uploaded = st.sidebar.file_uploader("📁 Upload Excel (.xlsx) (opsional)", type=["xlsx"])
-expected_columns = ["Cuaca", "Waktu", "Niat", "Olahraga"]
+    # Tampilkan hasil
+    for k in hasil:
+        print(f"P({k}|X) =", hasil[k])
 
-if uploaded:
-    try:
-        df = pd.read_excel(uploaded)
-        if all(col in df.columns for col in expected_columns):
-            st.success("✅ Data berhasil diunggah dan valid.")
-        else:
-            st.error(f"❌ Struktur kolom tidak sesuai. Kolom yang dibutuhkan: {expected_columns}")
-            df = data_default
-    except Exception as e:
-        st.error(f"Gagal membaca file Excel: {e}")
-        df = data_default
-else:
-    df = data_default
-    st.info("📌 Menggunakan data pelatihan bawaan.")
+    # Tentukan prediksi
+    prediksi = max(hasil, key=hasil.get)
+    print("Prediksi: Orang tersebut akan olahraga." if prediksi == 'ya' else "Prediksi: Orang tersebut tidak akan olahraga.")
 
-# Tampilkan data
-with st.expander("🔍 Lihat Data Pelatihan"):
-    st.dataframe(df)
-
-# Input prediksi
-st.subheader("🧪 Input Prediksi Baru")
-
-cuaca = st.selectbox("Cuaca:", df["Cuaca"].unique())
-waktu = st.selectbox("Waktu Luang:", df["Waktu"].unique())
-niat = st.selectbox("Niat:", df["Niat"].unique())
-
-input_user = {"Cuaca": cuaca, "Waktu": waktu, "Niat": niat}
-
-if st.button("🔮 Prediksi"):
-    st.subheader("📋 Langkah Perhitungan Naive Bayes")
-
-    total_data = len(df)
-    kelas_unik = df["Olahraga"].unique()
-    hasil_tiap_kelas = {}
-
-    for kelas in kelas_unik:
-        subset_kelas = df[df["Olahraga"] == kelas]
-        prior = len(subset_kelas) / total_data
-        st.markdown(f"**P({kelas}) = {len(subset_kelas)} / {total_data} = {prior:.4f}**")
-
-        likelihood = 1
-        for fitur, nilai in input_user.items():
-            prob_fitur = hitung_probabilitas_fitur(df, fitur, nilai, kelas, "Olahraga")
-            st.markdown(f"- P({fitur}={nilai}|{kelas}) = {prob_fitur:.4f}")
-            likelihood *= prob_fitur
-
-        hasil_akhir = prior * likelihood
-        hasil_tiap_kelas[kelas] = hasil_akhir
-        st.markdown(f"➡️ P({kelas}|X) ∝ {prior:.4f} × likelihood = {hasil_akhir:.6f}")
-        st.markdown("---")
-
-    prediksi_akhir = max(hasil_tiap_kelas, key=hasil_tiap_kelas.get)
-
-    st.success(f"🎯 Prediksi: Orang tersebut akan **olahraga? {prediksi_akhir}**")
-    st.write("📊 Probabilitas Kelas:")
-    st.json(hasil_tiap_kelas)
-
-    
-    fig, ax = plt.subplots()
-    ax.pie(hasil_tiap_kelas.values(), labels=hasil_tiap_kelas.keys(), autopct='%1.2f%%')
-    ax.set_title("Distribusi Probabilitas Prediksi")
-    st.pyplot(fig)
-
-    st.markdown("📘 **Kesimpulan:**")
-    st.markdown(f"- Karena nilai probabilitas tertinggi terdapat pada kelas '**{prediksi_akhir}**', maka sistem memprediksi hasil akhir sebagai **{prediksi_akhir}**.")
+# Contoh prediksi
+naive_bayes_predict(cuaca='cerah', waktu='banyak', niat='ya')
