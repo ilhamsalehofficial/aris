@@ -12,25 +12,25 @@ data = [
     {"Cuaca": "Cerah", "Waktu": "Sedikit", "Niat": "Tidak", "Olahraga": "Tidak"},
 ]
 
-# Hitung nilai Laplace smoothing dengan jumlah nilai unik tetap 3 untuk setiap atribut (Cerah, Hujan, Mendung)
-def laplace_smoothing(data, attr, value, target_class):
+# Fungsi Laplace Smoothing dengan jumlah nilai unik yang DITENTUKAN MANUAL
+def laplace_smoothing(attr, value, target_class):
     subset = [d for d in data if d["Olahraga"] == target_class]
-    match = [d for d in subset if d[attr] == value]
+    count = len([d for d in subset if d[attr] == value])
 
-    # Tetapkan jumlah nilai unik tiap atribut secara manual
+    # Jumlah nilai unik per atribut (dari PDF)
     if attr == "Cuaca":
-        unique_count = 3
+        v = 3
     elif attr == "Waktu":
-        unique_count = 2
+        v = 2
     elif attr == "Niat":
-        unique_count = 2
+        v = 2
     else:
-        unique_count = 1  # default fallback
+        v = 1
 
-    return (len(match) + 1) / (len(subset) + unique_count)
+    return (count + 1) / (len(subset) + v)
 
-
-st.title("Prediksi Olahraga (Naive Bayes sesuai PDF)")
+# Streamlit UI
+st.title("Prediksi Apakah Akan Olahraga (Versi PDF Asli)")
 
 cuaca = st.selectbox("Cuaca", ["Cerah", "Hujan", "Mendung"])
 waktu = st.selectbox("Waktu Luang", ["Banyak", "Sedikit"])
@@ -38,24 +38,17 @@ niat = st.selectbox("Niat", ["Ya", "Tidak"])
 
 if st.button("Prediksi"):
     total = len(data)
-    ya_data = [d for d in data if d["Olahraga"] == "Ya"]
-    tidak_data = [d for d in data if d["Olahraga"] == "Tidak"]
+    ya_total = len([d for d in data if d["Olahraga"] == "Ya"])
+    tidak_total = total - ya_total
 
-    p_ya = len(ya_data) / total
-    p_tidak = len(tidak_data) / total
+    p_ya = ya_total / total
+    p_tidak = tidak_total / total
 
-    # Hitung probabilitas dengan smoothing
-    p_ya_x = p_ya * \
-        laplace_smoothing(data, "Cuaca", cuaca, "Ya") * \
-        laplace_smoothing(data, "Waktu", waktu, "Ya") * \
-        laplace_smoothing(data, "Niat", niat, "Ya")
+    # Gunakan Laplace Smoothing SESUAI PDF
+    p_ya_x = p_ya * laplace_smoothing("Cuaca", cuaca, "Ya") * laplace_smoothing("Waktu", waktu, "Ya") * laplace_smoothing("Niat", niat, "Ya")
+    p_tidak_x = p_tidak * laplace_smoothing("Cuaca", cuaca, "Tidak") * laplace_smoothing("Waktu", waktu, "Tidak") * laplace_smoothing("Niat", niat, "Tidak")
 
-    p_tidak_x = p_tidak * \
-        laplace_smoothing(data, "Cuaca", cuaca, "Tidak") * \
-        laplace_smoothing(data, "Waktu", waktu, "Tidak") * \
-        laplace_smoothing(data, "Niat", niat, "Tidak")
-
-    # Tampilkan hasil sesuai format PDF
+    # Tampilkan hasil dengan pembulatan seperti di PDF
     st.subheader("Hasil Perhitungan:")
     st.write(f"P(Ya|X) = **{round(p_ya_x, 3)}**")
     st.write(f"P(Tidak|X) = **{round(p_tidak_x, 4)}**")
