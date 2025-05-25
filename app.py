@@ -1,4 +1,8 @@
 import streamlit as st
+import streamlit.runtime.scriptrunner.script_run_context as context
+if not hasattr(st, 'session_state'):
+    st.session_state = context.get_script_run_ctx().session_state
+
 
 # Data dari PDF
 data = [
