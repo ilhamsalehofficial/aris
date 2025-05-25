@@ -62,6 +62,6 @@ if st.button("Prediksi"):
     st.write(f"P(Tidak|X) = **{round(p_tidak_x, 4)}**")
 
     if p_ya_x > p_tidak_x:
-        st.success("✅ Prediksi: Ya — kemungkinan besar akan olahraga.")
+        st.success("✅ PredikDsi: Ya — kemungkinan besar akan olahraga.")
     else:
         st.warning("❌ Prediksi: Tidak — kemungkinan besar tidak akan olahraga.")
