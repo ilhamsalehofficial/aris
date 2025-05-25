@@ -21,7 +21,7 @@ def laplace_prob(data, attr, value, target):
     subset = [d for d in data if d["Olahraga"] == target]
     count_value = sum(1 for d in subset if d[attr] == value)
 
-    # Jumlah nilai unik sesuai atribut (DITENTUKAN MANUAL SESUAI PDF)
+    # HARUS MANUAL sesuai PDF
     if attr == "Cuaca":
         v = 3  # Cerah, Hujan, Mendung
     elif attr == "Waktu":
@@ -32,6 +32,7 @@ def laplace_prob(data, attr, value, target):
         v = 1
 
     return (count_value + 1) / (len(subset) + v)
+
 
 # ========================
 # STREAMLIT UI
