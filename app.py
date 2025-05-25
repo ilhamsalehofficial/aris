@@ -16,9 +16,19 @@ data = [
 def laplace_smoothing(data, attr, value, target_class):
     subset = [d for d in data if d["Olahraga"] == target_class]
     match = [d for d in subset if d[attr] == value]
-    # Nilai unik dari setiap atribut secara manual (disamakan dengan PDF)
-    unique_count = 3
+
+    # Tetapkan jumlah nilai unik tiap atribut secara manual
+    if attr == "Cuaca":
+        unique_count = 3
+    elif attr == "Waktu":
+        unique_count = 2
+    elif attr == "Niat":
+        unique_count = 2
+    else:
+        unique_count = 1  # default fallback
+
     return (len(match) + 1) / (len(subset) + unique_count)
+
 
 st.title("Prediksi Olahraga (Naive Bayes sesuai PDF)")
 
