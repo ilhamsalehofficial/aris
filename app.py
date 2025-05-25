@@ -116,8 +116,13 @@ if st.button("🔮 Prediksi"):
 
     # Pie chart visualisasi
     fig, ax = plt.subplots()
-    ax.pie(hasil_tiap_kelas.values(), labels=hasil_tiap_kelas.keys(), autopct='%1.2f%%')
+    kelas = list(hasil_tiap_kelas.keys())
+    nilai = list(hasil_tiap_kelas.values())
+    ax.barh(kelas, nilai)
+    ax.set_xlabel("Probabilitas")
     ax.set_title("Distribusi Probabilitas Prediksi")
+    for i, v in enumerate(nilai):
+    ax.text(v + 0.01, i, f"{v:.2f}", va='center')
     st.pyplot(fig)
 
     # Kesimpulan
