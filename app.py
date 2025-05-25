@@ -1,16 +1,14 @@
 # ----------------------------
-# streamlit: untuk membangun antarmuka web.
-# pandas: untuk membaca dan mengolah data.
-# matplotlib: untuk membuat grafik visualisasi.
+# streamlit: untuk antarmuka web interaktif
+# pandas: untuk pengolahan data
+# matplotlib: untuk visualisasi grafik
 # ----------------------------
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
 # ----------------------------
-# Fungsi: Menghitung probabilitas kondisional P(Fitur = Nilai | Kelas)
-# Contoh:
-# Jika Cuaca = Cerah dan Olahraga = Ya, maka hitung proporsi data yang cocok
+# Fungsi: Hitung P(Fitur = Nilai | Kelas)
 # ----------------------------
 def hitung_probabilitas_fitur(df, fitur, nilai, label_kelas, kolom_target):
     subset = df[df[kolom_target] == label_kelas]
@@ -21,7 +19,7 @@ def hitung_probabilitas_fitur(df, fitur, nilai, label_kelas, kolom_target):
     return cocok / total
 
 # ----------------------------
-# Menampilkan judul dan nama anggota kelompok di halaman utama.
+# Judul aplikasi dan anggota kelompok
 # ----------------------------
 st.title("🔍 Prediksi Olahraga dengan Naive Bayes")
 st.markdown("""
@@ -36,8 +34,7 @@ st.markdown("""
 """)
 
 # ----------------------------
-# Data pelatihan bawaan jika pengguna tidak mengunggah file Excel.
-# Berisi fitur Cuaca, Waktu, Niat dan target: Olahraga
+# Data bawaan (default)
 # ----------------------------
 data_default = pd.DataFrame([
     {"Cuaca": "Cerah", "Waktu": "Banyak", "Niat": "Ya", "Olahraga": "Ya"},
@@ -51,8 +48,7 @@ data_default = pd.DataFrame([
 ])
 
 # ----------------------------
-# Upload file Excel opsional
-# Jika tidak diunggah atau salah format, gunakan data bawaan
+# Upload Excel (opsional)
 # ----------------------------
 st.sidebar.header("⚙️ Pengaturan Data")
 uploaded = st.sidebar.file_uploader("📁 Upload Excel (.xlsx)", type=["xlsx"])
@@ -62,9 +58,9 @@ if uploaded:
     try:
         df = pd.read_excel(uploaded)
         if all(col in df.columns for col in expected_columns):
-            st.success("✅ Data berhasil diunggah dan valid.")
+            st.success("✅ Data berhasil diunggah.")
         else:
-            st.error(f"❌ Kolom tidak sesuai. Diperlukan: {expected_columns}")
+            st.error(f"❌ Kolom tidak sesuai. Dibutuhkan: {expected_columns}")
             df = data_default
     except Exception as e:
         st.error(f"❌ Gagal membaca file: {e}")
@@ -74,60 +70,65 @@ else:
     st.info("📌 Menggunakan data pelatihan bawaan.")
 
 # ----------------------------
-# Menampilkan tabel data pelatihan
+# Tampilkan data pelatihan
 # ----------------------------
 with st.expander("🔍 Lihat Data Pelatihan"):
     st.dataframe(df)
 
 # ----------------------------
-# Input data baru untuk prediksi
+# Input untuk prediksi
 # ----------------------------
 st.subheader("🧪 Input Prediksi Baru")
 cuaca = st.selectbox("Cuaca:", df["Cuaca"].unique())
 waktu = st.selectbox("Waktu Luang:", df["Waktu"].unique())
 niat = st.selectbox("Niat:", df["Niat"].unique())
+
 input_user = {"Cuaca": cuaca, "Waktu": waktu, "Niat": niat}
 
 # ----------------------------
-# Proses prediksi ketika tombol ditekan
+# Proses prediksi saat tombol ditekan
 # ----------------------------
 if st.button("🔮 Prediksi"):
     total_data = len(df)
     kelas_unik = df["Olahraga"].unique()
     hasil_tiap_kelas = {}
 
-    # Iterasi untuk tiap kelas (Ya / Tidak)
     for kelas in kelas_unik:
-        prior = len(df[df["Olahraga"] == kelas]) / total_data  # P(Y)
+        prior = len(df[df["Olahraga"] == kelas]) / total_data
         likelihood = 1
         for fitur, nilai in input_user.items():
-            prob = hitung_probabilitas_fitur(df, fitur, nilai, kelas, "Olahraga")  # P(X|Y)
+            prob = hitung_probabilitas_fitur(df, fitur, nilai, kelas, "Olahraga")
             likelihood *= prob
-        hasil_akhir = prior * likelihood  # P(Y|X) ~ P(Y) * P(X|Y)
-        hasil_tiap_kelas[kelas] = hasil_akhir
+        hasil_tiap_kelas[kelas] = prior * likelihood
 
-    # Ambil kelas dengan probabilitas tertinggi sebagai hasil prediksi
+    # Prediksi akhir: kelas dengan probabilitas tertinggi
     prediksi_akhir = max(hasil_tiap_kelas, key=hasil_tiap_kelas.get)
 
-    # Tampilkan hasil prediksi
+    # ----------------------------
+    # Tampilkan hasil akhir
+    # ----------------------------
     st.success(f"🎯 Prediksi: Orang tersebut akan **olahraga? {prediksi_akhir}**")
-    st.write("📊 Probabilitas Setiap Kelas:")
+    st.write("📊 Probabilitas Kelas:")
     st.json(hasil_tiap_kelas)
 
-    # Pie chart visualisasi
-fig, ax = plt.subplots()
-kelas = list(hasil_tiap_kelas.keys())
-nilai = list(hasil_tiap_kelas.values())
+    # ----------------------------
+    # Bar Chart Horizontal
+    # ----------------------------
+    fig, ax = plt.subplots()
+    kelas = list(hasil_tiap_kelas.keys())
+    nilai = list(hasil_tiap_kelas.values())
+    ax.barh(kelas, nilai, color='skyblue')
+    ax.set_xlabel("Probabilitas")
+    ax.set_title("Distribusi Probabilitas Prediksi")
 
-ax.barh(kelas, nilai)
-ax.set_xlabel("Probabilitas")
-ax.set_title("Distribusi Probabilitas Prediksi")
-for i, v in enumerate(nilai):
-    ax.text(v + 0.01, i, f"{v:.2f}", va='center')
+    # Tampilkan nilai di ujung bar
+    for i, v in enumerate(nilai):
+        ax.text(v + 0.01, i, f"{v:.2f}", va='center')
 
-st.pyplot(fig)
+    st.pyplot(fig)
 
-
+    # ----------------------------
     # Kesimpulan
+    # ----------------------------
     st.markdown("📘 **Kesimpulan:**")
-    st.markdown(f"- Karena probabilitas tertinggi terdapat pada kelas '**{prediksi_akhir}**', maka sistem memprediksi bahwa orang tersebut **{prediksi_akhir.lower()}** untuk berolahraga.")
+    st.markdown(f"- Karena probabilitas tertinggi pada kelas '**{prediksi_akhir}**', maka sistem memprediksi bahwa orang tersebut kemungkinan besar akan **{prediksi_akhir.lower()}** untuk berolahraga.")
