@@ -1,9 +1,38 @@
 import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, precision_score, recall_score, f1_score
+import seaborn as sns
 
-# =======================
-# DATA TRAINING DARI PDF
-# =======================
-data = [
+# ----------------------------
+# Fungsi Naive Bayes (tanpa Laplace smoothing agar sesuai PDF)
+# ----------------------------
+def hitung_probabilitas_fitur(df, fitur, nilai, label_kelas, kolom_target):
+    subset = df[df[kolom_target] == label_kelas]
+    total = len(subset)
+    cocok = len(subset[subset[fitur] == nilai])
+    if total == 0:
+        return 0
+    return cocok / total
+
+# ----------------------------
+# Streamlit UI
+# ----------------------------
+st.title("🔍 Prediksi Olahraga dengan Naive Bayes")
+
+st.markdown("""
+---
+### 👥 Kelompok 4 - Anggota
+1. Ilham Saleh  
+2. Putra Pamungkas  
+3. Laras Anggi Wijayanti  
+4. Sina Widianti  
+5. Dila  
+---
+""")
+
+# Data default (sesuai contoh di PDF)
+data_default = pd.DataFrame([
     {"Cuaca": "Cerah", "Waktu": "Banyak", "Niat": "Ya", "Olahraga": "Ya"},
     {"Cuaca": "Hujan", "Waktu": "Sedikit", "Niat": "Tidak", "Olahraga": "Tidak"},
     {"Cuaca": "Cerah", "Waktu": "Sedikit", "Niat": "Ya", "Olahraga": "Ya"},
@@ -12,69 +41,76 @@ data = [
     {"Cuaca": "Cerah", "Waktu": "Banyak", "Niat": "Tidak", "Olahraga": "Ya"},
     {"Cuaca": "Mendung", "Waktu": "Sedikit", "Niat": "Ya", "Olahraga": "Tidak"},
     {"Cuaca": "Cerah", "Waktu": "Sedikit", "Niat": "Tidak", "Olahraga": "Tidak"},
-]
+])
 
-# ========================
-# LAPACE SMOOTHING FIX
-# ========================
-def laplace_prob(data, attr, value, target):
-    subset = [d for d in data if d["Olahraga"] == target]
-    count_value = sum(1 for d in subset if d[attr] == value)
+st.sidebar.header("⚙️ Pengaturan Data")
 
-    # HARUS MANUAL sesuai PDF
-    if attr == "Cuaca":
-        v = 3  # Cerah, Hujan, Mendung
-    elif attr == "Waktu":
-        v = 2  # Banyak, Sedikit
-    elif attr == "Niat":
-        v = 2  # Ya, Tidak
-    else:
-        v = 1
+# Upload Excel
+uploaded = st.sidebar.file_uploader("📁 Upload Excel (.xlsx) (opsional)", type=["xlsx"])
+expected_columns = ["Cuaca", "Waktu", "Niat", "Olahraga"]
 
-    return (count_value + 1) / (len(subset) + v)
+if uploaded:
+    try:
+        df = pd.read_excel(uploaded)
+        if all(col in df.columns for col in expected_columns):
+            st.success("✅ Data berhasil diunggah dan valid.")
+        else:
+            st.error(f"❌ Struktur kolom tidak sesuai. Kolom yang dibutuhkan: {expected_columns}")
+            df = data_default
+    except Exception as e:
+        st.error(f"Gagal membaca file Excel: {e}")
+        df = data_default
+else:
+    df = data_default
+    st.info("📌 Menggunakan data pelatihan bawaan.")
 
+# Tampilkan data
+with st.expander("🔍 Lihat Data Pelatihan"):
+    st.dataframe(df)
 
-# ========================
-# STREAMLIT UI
-# ========================
-st.set_page_config(page_title="Naive Bayes PDF", layout="centered")
-st.title("🔍 Prediksi Apakah Akan Olahraga (Naive Bayes Sesuai PDF)")
+# Input prediksi
+st.subheader("🧪 Input Prediksi Baru")
 
-cuaca = st.selectbox("Cuaca", ["Cerah", "Hujan", "Mendung"])
-waktu = st.selectbox("Waktu Luang", ["Banyak", "Sedikit"])
-niat = st.selectbox("Niat", ["Ya", "Tidak"])
+cuaca = st.selectbox("Cuaca:", df["Cuaca"].unique())
+waktu = st.selectbox("Waktu Luang:", df["Waktu"].unique())
+niat = st.selectbox("Niat:", df["Niat"].unique())
 
-if st.button("Prediksi"):
-    total = len(data)
-    ya_total = len([d for d in data if d["Olahraga"] == "Ya"])
-    tidak_total = total - ya_total
+input_user = {"Cuaca": cuaca, "Waktu": waktu, "Niat": niat}
 
-    # Prior Probabilities
-    p_ya = ya_total / total
-    p_tidak = tidak_total / total
+if st.button("🔮 Prediksi"):
+    st.subheader("📋 Langkah Perhitungan Naive Bayes")
 
-    # Posterior with Laplace Smoothing (FIX SESUAI PDF)
-    p_ya_x = (
-        p_ya *
-        laplace_prob(data, "Cuaca", cuaca, "Ya") *
-        laplace_prob(data, "Waktu", waktu, "Ya") *
-        laplace_prob(data, "Niat", niat, "Ya")
-    )
+    total_data = len(df)
+    kelas_unik = df["Olahraga"].unique()
+    hasil_tiap_kelas = {}
 
-    p_tidak_x = (
-        p_tidak *
-        laplace_prob(data, "Cuaca", cuaca, "Tidak") *
-        laplace_prob(data, "Waktu", waktu, "Tidak") *
-        laplace_prob(data, "Niat", niat, "Tidak")
-    )
+    for kelas in kelas_unik:
+        subset_kelas = df[df["Olahraga"] == kelas]
+        prior = len(subset_kelas) / total_data
+        st.markdown(f"**P({kelas}) = {len(subset_kelas)} / {total_data} = {prior:.4f}**")
 
-    # Output
-    st.subheader("📊 Hasil Perhitungan:")
-    st.write(f"P(Ya|X) = **{round(p_ya_x, 3)}**")
-    st.write(f"P(Tidak|X) = **{round(p_tidak_x, 4)}**")
+        likelihood = 1
+        for fitur, nilai in input_user.items():
+            prob_fitur = hitung_probabilitas_fitur(df, fitur, nilai, kelas, "Olahraga")
+            st.markdown(f"- P({fitur}={nilai}|{kelas}) = {prob_fitur:.4f}")
+            likelihood *= prob_fitur
 
-    st.subheader("🧠 Kesimpulan:")
-    if p_ya_x > p_tidak_x:
-        st.success("✅ Prediksi: Ya — kemungkinan besar akan olahraga.")
-    else:
-        st.warning("❌ Prediksi: Tidak — kemungkinan besar tidak akan olahraga.")
+        hasil_akhir = prior * likelihood
+        hasil_tiap_kelas[kelas] = hasil_akhir
+        st.markdown(f"➡️ P({kelas}|X) ∝ {prior:.4f} × likelihood = {hasil_akhir:.6f}")
+        st.markdown("---")
+
+    prediksi_akhir = max(hasil_tiap_kelas, key=hasil_tiap_kelas.get)
+
+    st.success(f"🎯 Prediksi: Orang tersebut akan **olahraga? {prediksi_akhir}**")
+    st.write("📊 Probabilitas Kelas:")
+    st.json(hasil_tiap_kelas)
+
+    
+    fig, ax = plt.subplots()
+    ax.pie(hasil_tiap_kelas.values(), labels=hasil_tiap_kelas.keys(), autopct='%1.2f%%')
+    ax.set_title("Distribusi Probabilitas Prediksi")
+    st.pyplot(fig)
+
+    st.markdown("📘 **Kesimpulan:**")
+    st.markdown(f"- Karena nilai probabilitas tertinggi terdapat pada kelas '**{prediksi_akhir}**', maka sistem memprediksi hasil akhir sebagai **{prediksi_akhir}**.")
