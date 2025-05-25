@@ -115,15 +115,18 @@ if st.button("🔮 Prediksi"):
     st.json(hasil_tiap_kelas)
 
     # Pie chart visualisasi
-    fig, ax = plt.subplots()
-    kelas = list(hasil_tiap_kelas.keys())
-    nilai = list(hasil_tiap_kelas.values())
-    ax.barh(kelas, nilai)
-    ax.set_xlabel("Probabilitas")
-    ax.set_title("Distribusi Probabilitas Prediksi")
-    for i, v in enumerate(nilai):
+fig, ax = plt.subplots()
+kelas = list(hasil_tiap_kelas.keys())
+nilai = list(hasil_tiap_kelas.values())
+
+ax.barh(kelas, nilai)
+ax.set_xlabel("Probabilitas")
+ax.set_title("Distribusi Probabilitas Prediksi")
+for i, v in enumerate(nilai):
     ax.text(v + 0.01, i, f"{v:.2f}", va='center')
-    st.pyplot(fig)
+
+st.pyplot(fig)
+
 
     # Kesimpulan
     st.markdown("📘 **Kesimpulan:**")
