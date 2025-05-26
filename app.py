@@ -24,7 +24,7 @@ def hitung_probabilitas_fitur(df, fitur, nilai, label_kelas, kolom_target):
 st.title("🔍 Prediksi Olahraga dengan Naive Bayes")
 st.markdown("""
 ---
-### 👥 Kelompok 4 - Anggota
+### 👥 Kelompok 1 - Anggota
 1. Ilham Saleh  
 2. Putra Pamungkas  
 3. Laras Anggi Wijayanti  
